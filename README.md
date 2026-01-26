@@ -6,10 +6,47 @@
 
 ## インデックスページの作成
 
-TODO:
+### HTML の配置
+
+`src/main/resources/templates/index.html` に、以下 HTML ファイルを配置します。
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>index</title>
+</head>
+<body>
+  Hello Spring Security.
+</body>
+</html>
+```
+
+### コントローラーの作成
+
+`src/main/java/dev/mikoto2000/security/controller/IndexController.java` に、以下 java ファイルを配置します。
+
+```java
+package dev.mikoto2000.security.controller;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+
+/**
+ * IndexController
+ */
+@Controller
+public class IndexController {
+  @GetMapping("/")
+  public String index() {
+    return "index";
+  }
+}
+```
 
 
-## デフォルトの挙動
+## デフォルト時の動作確認
 
 Spring Security の設定をしていない場合、起動時に以下のようにログインパスワードが表示されます。
 
