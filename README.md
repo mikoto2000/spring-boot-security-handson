@@ -61,11 +61,64 @@ This generated password is for development use only. Your security configuration
 
 デフォルトユーザーは `user` なので、このユーザー名・パスワードでログインできます。
 
-`http://localhost:8080` を開き、ユーザー名: `user`, パスワード: `<起動時に表示されたパスワード>` でログインし、インデックスページが表示されれば OK です。
+`http://localhost:8080` を開くとログインフォームが表示されるので、ユーザー名: `user`, パスワード: `<起動時に表示されたパスワード>` でログインし、インデックスページが表示されれば OK です。
 
+もちろんこれでは業務要件を満たすわけないので、これからワークショップで行うようなカスタマイズをしていくこととなります。
 
 
 ## ログインユーザー取得ロジックのカスタマイズ
 
-TODO:
+ここでは、 Spring Security のカスタマイズポイントのひとつである「ログインユーザー取得ロジック」のカスタマイズを行います。
+
+`src/main/java/dev/mikoto2000/security/configuration/UserDetailsServiceImpl.java` を作成し、次のように実装します。
+
+```java
+package dev.mikoto2000.security.configuration;
+
+import java.util.HashMap;
+
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Component;
+
+/**
+ * UserDetailServiceImpl
+ */
+@Component
+public class UserDetailsServiceImpl implements UserDetailsService {
+
+  private HashMap<String, String> users = new HashMap<>();
+  {
+    // "{bcrypt}$2a$10$0OsB8/8crrUzT9O8VNJF.uF2sB1c7tpvqJ/COY0Hm9qtoCETRa1cC" = "password"
+    users.put("mikoto2000", "{bcrypt}$2a$10$0OsB8/8crrUzT9O8VNJF.uF2sB1c7tpvqJ/COY0Hm9qtoCETRa1cC");
+    users.put("mikoto2001", "{bcrypt}$2a$10$0OsB8/8crrUzT9O8VNJF.uF2sB1c7tpvqJ/COY0Hm9qtoCETRa1cC");
+  }
+
+  @Override
+  public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    // ユーザーの存在チェック
+    if (!users.containsKey(username)) {
+      throw new UsernameNotFoundException(username);
+    }
+
+    // 見つけたユーザーの情報を返却(今回はユーザー名・パスワード以外は固定位置で返却)
+    return User.withUsername(username)
+      .password(users.get(username))
+      .roles("ADMIN")
+      .disabled(false)
+      .build();
+  }
+}
+```
+
+こうすることで、「ユーザーを探して Spring Boot に認証対象の情報を渡す」という処理を自分で実装できます。
+
+今回の実装では、メモリ上に HashMap でユーザー名とパスワードを保持し、そこからフォームから渡されたユーザー( `loadUserByUsername` の仮引数 `username` ) を探すように実装しています。
+
+本格的に実装するなら、 `loadUserByUsername` の中で DB 接続してユーザー情報を検索し、返却することになります。
+
+これはワークショップの後半でやってみましょう。
+
 
