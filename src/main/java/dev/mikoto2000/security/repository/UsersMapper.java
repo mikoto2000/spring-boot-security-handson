@@ -13,7 +13,9 @@ import dev.mikoto2000.security.entity.User;
 public interface UsersMapper {
   @Select("""
           SELECT
-            *
+            username,
+            password,
+            enabled
           FROM
             USERS
           WHERE
