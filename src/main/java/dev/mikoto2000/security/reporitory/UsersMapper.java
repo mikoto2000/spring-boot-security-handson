@@ -4,10 +4,10 @@ import java.util.Optional;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
-import dev.mikoto2000.security.entity.Users;
+import dev.mikoto2000.security.entity.User;
 
 /**
- * Users
+ * UsersMapper
  */
 @Mapper
 public interface UsersMapper {
@@ -19,5 +19,5 @@ public interface UsersMapper {
           WHERE
             USERS.username = #{username}
           """)
-  Optional<Users> findByUsername(String username);
+  Optional<User> findByUsername(String username);
 }
