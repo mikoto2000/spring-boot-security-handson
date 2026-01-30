@@ -1,4 +1,4 @@
-package dev.mikoto2000.security.reporitory;
+package dev.mikoto2000.security.repository;
 
 import java.util.Optional;
 import org.apache.ibatis.annotations.Mapper;

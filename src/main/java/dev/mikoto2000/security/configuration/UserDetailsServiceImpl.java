@@ -6,7 +6,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 
-import dev.mikoto2000.security.reporitory.UsersMapper;
+import dev.mikoto2000.security.repository.UsersMapper;
 import lombok.RequiredArgsConstructor;
 
 /**
