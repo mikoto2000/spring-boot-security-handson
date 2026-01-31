@@ -244,11 +244,13 @@ VALUES
 ```java
 package dev.mikoto2000.security.entity;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 
 /**
  * User
  */
+@AllArgsConstructor
 @Data
 public class User {
   private String username;
@@ -263,10 +265,10 @@ public class User {
 
 `username` を基にユーザー情報を取得する IF を定義します。
 
-`src/main/java/dev/mikoto2000/security/reporitory/UsersMapper.java`:
+`src/main/java/dev/mikoto2000/security/repository/UsersMapper.java`:
 
 ```java
-package dev.mikoto2000.security.reporitory;
+package dev.mikoto2000.security.repository;
 
 import java.util.Optional;
 import org.apache.ibatis.annotations.Mapper;
@@ -308,7 +310,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 
-import dev.mikoto2000.security.reporitory.UsersMapper;
+import dev.mikoto2000.security.repository.UsersMapper;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -344,6 +346,277 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
 
 ## ユーザー登録
+
+それでは、 DB にユーザー情報を登録してみましょう。
+
+HashMap や DB のデータ定義を見た方は気付いたと思いますが、Spring Security ではパスワードをハッシュ化して保持しています。
+
+ここではユーザー情報を作成し、パスワードをハッシュ化したうえで USERS テーブルに入れるようにコードを修正していきます。
+
+### Spring Security 設定の変更・追加
+
+SecurityConfig に、以下の修正を行います。
+
+- `/signup` ページに誰でもアクセスできるようにする
+- ユーザー作成時に使用する `PasswordEncoder` を Bean 定義する
+
+`src/main/java/dev/mikoto2000/security/configuration/SecurityConfig.java`:
+
+```java
+package dev.mikoto2000.security.configuration;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+
+/**
+ * SecurityConfig
+ */
+@Configuration
+public class SecurityConfig {
+  @Bean
+  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    // ログインフォームを自作し、ログイン関連 URL は誰でもアクセスできるよう指定
+    // ログイン失敗時には "/login?error" へリダイレクトする
+    http.formLogin(login -> {
+      login
+        .loginPage("/login")
+        .permitAll()
+        .failureUrl("/login?error");
+    })
+    // ログアウトは、画面の自作はせず
+    // POST する URL とログアウト成功後のリダイレクト URL を指定する
+    .logout(logout -> logout
+        .logoutUrl("/logout")
+        .logoutSuccessUrl("/"))
+    .authorizeHttpRequests(auth -> {
+      auth
+        /* 修正ここから(/signup を追加) */
+        // "/", "/signup" は誰でも表示できる
+        .requestMatchers("/", "/signup").permitAll()
+        /* 修正ここまで */
+        // その他ページは、ログイン済みでないと表示できない
+        .anyRequest().authenticated();
+    });
+    return http.build();
+  }
+
+  /* 修正ここから(PasswordEncoder Bean 定義を追加) */
+  /**
+   * Spring Security で使用する PasswordEncoder を定義。
+   */
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+    return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+  }
+  /* 修正ここまで */
+}
+```
+
+`PasswordEncoder` を Bean 定義することで、 Spring Security がその `PasswordEncoder` を使用します。
+さらに、アプリケーションで DI することで、 Spring Security が使用する `PasswordEncoder` と同じものをアプリケーションが使えるようになります。
+
+
+### UsersMapper にインサート用メソッドを追加
+
+`insert` メソッドを追加し、テーブルにレコードを追加できるようにします。
+
+`src/main/java/dev/mikoto2000/security/repository/UsersMapper.java`:
+
+```java
+package dev.mikoto2000.security.repository;
+
+import java.util.Optional;
+
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
+
+import dev.mikoto2000.security.entity.User;
+
+/**
+ * UsersMapper
+ */
+@Mapper
+public interface UsersMapper {
+  @Select("""
+          SELECT
+            username,
+            password,
+            enabled
+          FROM
+            USERS
+          WHERE
+            USERS.username = #{username}
+          """)
+  Optional<User> findByUsername(String username);
+
+  /* 追加ここから */
+  @Insert("""
+          INSERT INTO USERS
+          (
+            username,
+            password,
+            enabled
+          )
+            VALUES
+          (
+            #{username},
+            #{password},
+            #{enabled}
+          )
+          """)
+  int insert(User user);
+  /* 追加ここまで */
+}
+```
+
+ここは一般的な MyBatis の insert ですね。
+
+
+### コントローラーの追加
+
+`/signup` 用のコントローラーを定義します。
+
+`src/main/java/dev/mikoto2000/security/controller/SignupController.java`:
+
+```java
+package dev.mikoto2000.security.controller;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import dev.mikoto2000.security.entity.User;
+import dev.mikoto2000.security.repository.UsersMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * SignupController
+ */
+@Controller
+@RequiredArgsConstructor
+@Slf4j
+public class SignupController {
+
+  private final UsersMapper usersMapper;
+  private final PasswordEncoder passwordEncoder;
+
+  @GetMapping("/signup")
+  public String signupPage() {
+    return "signup";
+  }
+
+  @PostMapping("/signup")
+  public String signup(
+      @RequestParam String username,
+      @RequestParam String password
+      ) {
+
+    // パスワードのハッシュ化
+    var hashedPassword = passwordEncoder.encode(password);
+
+    try {
+      // ユーザーをテーブルへインサート
+      User user = new User(username, hashedPassword, true);
+      usersMapper.insert(user);
+    } catch (RuntimeException e) {
+      log.error("ユーザー登録で例外が発生しました", e);
+      return "redirect:/signup?error";
+    }
+
+    // ログイン画面へリダイレクト
+    return "redirect:/login";
+  }
+
+}
+```
+
+GET リクエストでサインアップページを表示し、そこから POST リクエストを受け取ることでユーザー登録を行います。
+
+ユーザー登録では、 DI した `PasswordEncoder` を利用しパスワードをハッシュ化することで、
+Spring Security が読み込めるハッシュ形式のパスワードを生成します。
+
+
+### View の追加
+
+裏側の仕組みが整ったので、 View の作成に入っていきます。
+
+#### ログイン画面
+
+ログイン画面にサインアップ画面へのリンクを追加します。
+
+`src/main/resources/templates/login.html`:
+
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>LOGIN</title>
+    <meta charset="UTF-8">
+  </head>
+  <body>
+    <h1>ログインページ</h1>
+    <div th:if="${param.error}">
+      ユーザー名かパスワードが違います。
+    </div>
+    <form th:action="@{/login}" method="post">
+      <div>
+        <input type="text" name="username" placeholder="Username"/>
+      </div>
+      <div>
+        <input type="password" name="password" placeholder="Password"/>
+      </div>
+      <input type="submit" value="ログイン" />
+    </form>
+    <!-- 追加ここから -->
+    <a href="/signup">ユーザー登録ページ</a>
+    <a href="/">インデックスページ</a>
+    <!-- 追加ここまで -->
+  </body>
+</html>
+```
+
+#### サインアップ画面
+
+ログインページ同様、ユーザー名とパスワードを入力する画面を追加します。
+
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>SIGNIN</title>
+    <meta charset="UTF-8">
+  </head>
+  <body>
+    <h1>サインインページ</h1>
+    <div th:if="${param.error}">
+      エラーが発生しました。
+    </div>
+    <form th:action="@{/signup}" method="post">
+      <div>
+        <input type="text" name="username" placeholder="Username"/>
+      </div>
+      <div>
+        <input type="password" name="password" placeholder="Password"/>
+      </div>
+      <input type="submit" value="ユーザー作成" />
+    </form>
+    <a href="/login">ログインページ</a>
+    <a href="/">インデックスページ</a>
+  </body>
+</html>
+```
+
+### 動作確認
+
+ユーザー登録を行い、登録したユーザーでログインができることを確認しましょう。
 
 
 ## 参考資料
