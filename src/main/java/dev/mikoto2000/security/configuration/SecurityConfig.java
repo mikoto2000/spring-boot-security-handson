@@ -3,6 +3,8 @@ package dev.mikoto2000.security.configuration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
@@ -12,7 +14,6 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    /* 修正ここから */
     // ログインフォームを自作し、ログイン関連 URL は誰でもアクセスできるよう指定
     // ログイン失敗時には "/login?error" へリダイレクトする
     http.formLogin(login -> {
@@ -26,14 +27,25 @@ public class SecurityConfig {
     .logout(logout -> logout
         .logoutUrl("/logout")
         .logoutSuccessUrl("/"))
-    /* 修正ここまで */
     .authorizeHttpRequests(auth -> {
       auth
-        // "/" は誰でも表示できる
-        .requestMatchers("/").permitAll()
+        /* 修正ここから(/signup を追加) */
+        // "/", "/signup" は誰でも表示できる
+        .requestMatchers("/", "/signup").permitAll()
+        /* 修正ここまで */
         // その他ページは、ログイン済みでないと表示できない
         .anyRequest().authenticated();
     });
     return http.build();
   }
+
+  /* 修正ここから(PasswordEncoder Bean 定義を追加) */
+  /**
+   * Spring Security で使用する PasswordEncoder を定義。
+   */
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+    return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+  }
+  /* 修正ここまで */
 }

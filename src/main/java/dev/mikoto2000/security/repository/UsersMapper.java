@@ -1,6 +1,8 @@
 package dev.mikoto2000.security.repository;
 
 import java.util.Optional;
+
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
@@ -22,4 +24,22 @@ public interface UsersMapper {
             USERS.username = #{username}
           """)
   Optional<User> findByUsername(String username);
+
+  /* 追加ここから */
+  @Insert("""
+          INSERT INTO USERS
+          (
+            username,
+            password,
+            enabled
+          )
+            VALUES
+          (
+            #{username},
+            #{password},
+            #{enabled}
+          )
+          """)
+  int insert(User user);
+  /* 追加ここまで */
 }

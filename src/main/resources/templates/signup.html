@@ -1,27 +1,24 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>LOGIN</title>
+    <title>SIGNIN</title>
     <meta charset="UTF-8">
   </head>
   <body>
-    <h1>ログインページ</h1>
+    <h1>サインインページ</h1>
     <div th:if="${param.error}">
-      ユーザー名かパスワードが違います。
+      エラーが発生しました。
     </div>
-    <form th:action="@{/login}" method="post">
+    <form th:action="@{/signup}" method="post">
       <div>
         <input type="text" name="username" placeholder="Username"/>
       </div>
       <div>
         <input type="password" name="password" placeholder="Password"/>
       </div>
-      <input type="submit" value="ログイン" />
+      <input type="submit" value="ユーザー作成" />
     </form>
-    <!-- 追加ここから -->
-    <a href="/signup">ユーザー登録ページ</a>
+    <a href="/login">ログインページ</a>
     <a href="/">インデックスページ</a>
-    <!-- 追加ここまで -->
   </body>
 </html>
-
