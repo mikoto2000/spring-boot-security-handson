@@ -1,8 +1,11 @@
 # Spring Boot Security ワークショップ 第一回
 
-## Spring Initializr
+## ベースプロジェクト
 
-[これ](https://start.spring.io/#!type=maven-project&language=java&platformVersion=4.0.2&packaging=jar&configurationFileFormat=yaml&jvmVersion=25&groupId=dev.mikoto2000&artifactId=security&name=security&description=Demo%20project%20for%20Spring%20Security&packageName=dev.mikoto2000.security&dependencies=devtools,lombok,web,security,thymeleaf,h2,mybatis)
+[spring-boot-security-workshop-base.zip](https://github.com/mikoto2000/spring-boot-security-workshop/releases/download/v1.0.0/spring-boot-security-workshop-base.ziphttps://github.com/mikoto2000/spring-boot-security-workshop/releases/download/v1.0.0/spring-boot-security-workshop-base.zip) をダウンロードし、展開してください。
+
+本ワークショップでは、このベースプロジェクトを元に Spring Security のカスタマイズを行っていきます。
+
 
 ## インデックスページの作成
 
