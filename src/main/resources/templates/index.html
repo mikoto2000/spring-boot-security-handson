@@ -11,9 +11,11 @@
     <a href="/private">認証必須ページ</a>
   </p>
   <!-- 変更ここから -->
+  <!-- ADMIN ロールを持つ人にのみ /signup へのリンクを表示-->
+  <a sec:authorize="hasRole('ADMIN')" href="/signup">ユーザー登録ページ</a>
+  <!-- 変更ここまで -->
   <form method="post" th:action="@{/logout}">
     <button type="submit">ログアウト</button>
   </form>
-  <!-- 変更ここまで -->
 </body>
 </html>

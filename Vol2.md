@@ -204,8 +204,12 @@ CSRF 対策のため、 Thymeleaf の機能を用いて `form` を構築しま�
 ユーザー情報を格納するテーブルは、 `USERS` テーブルとして定義しています。
 CREATE 文は `src/main/resources/schema.sql`, データは `src/main/resources/data.sql` で確認できます。
 
-`role` カラムを用意していますが、まだロールによる認可制御は行いません。
-次のステップで、role を使った認可（RBAC）を導入します。
+role カラムを用意していますが、本格的な RBAC（ロール設計・権限設計）までは扱いません。
+
+本ワークショップでは、次の 2 点までをゴールとします。
+
+- ロール情報をログインユーザーに持たせる
+- URL / View レベルで制御できることを確認する
 
 `src/main/resources/schema.sql`:
 
@@ -400,9 +404,12 @@ public class SecurityConfig {
         .logoutSuccessUrl("/"))
     .authorizeHttpRequests(auth -> {
       auth
-        /* 修正ここから(/signup を追加) */
-        // "/", "/signup" は誰でも表示できる
-        .requestMatchers("/", "/signup").permitAll()
+        /* 修正ここから */
+        // "/" は誰でも表示できる
+        .requestMatchers("/").permitAll()
+        // "/signup", "/admin/**" は ADMIN しか表示できない
+        .requestMatchers("/signup").hasRole("ADMIN")
+        .requestMatchers("/admin/**").hasRole("ADMIN")
         /* 修正ここまで */
         // その他ページは、ログイン済みでないと表示できない
         .anyRequest().authenticated();
@@ -424,6 +431,9 @@ public class SecurityConfig {
 
 `PasswordEncoder` を Bean 定義することで、 Spring Security がその `PasswordEncoder` を使用します。
 さらに、アプリケーションで DI することで、 Spring Security が使用する `PasswordEncoder` と同じものをアプリケーションが使えるようになります。
+
+また、ユーザー登録は管理者のみが行うこととして、 `/signup` は `ADMIN` のみがアクセスできるようにしました。
+初期管理者ユーザーは `data.sql` であらかじめ作成しています。
 
 
 ### UsersMapper にインサート用メソッドを追加
@@ -533,8 +543,7 @@ public class SignupController {
 
     try {
       // ユーザーをテーブルへインサート
-      // ロールは固定で "ADMIN" とする
-      User user = new User(username, hashedPassword, true, "ADMIN");
+      User user = new User(username, hashedPassword, true, "USER");
       usersMapper.insert(user);
     } catch (RuntimeException e) {
       log.error("ユーザー登録で例外が発生しました", e);
@@ -546,7 +555,6 @@ public class SignupController {
   }
 
 }
-
 ```
 
 GET リクエストでサインアップページを表示し、そこから POST リクエストを受け取ることでユーザー登録を行います。
@@ -558,9 +566,43 @@ Spring Security が読み込めるハッシュ形式のパスワードを生成�
 
 裏側の仕組みが整ったので、 View の作成に入っていきます。
 
+#### インデックス画面
+
+インデックス画面に、 `ADMIN` ロールを持つユーザーにのみ見えるサインアップ画面へのリンクを追加します。
+
+`src/main/resources/templates/index.html`:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>index</title>
+</head>
+<body>
+  Hello Spring Security.
+
+  <p>
+    <a href="/private">認証必須ページ</a>
+  </p>
+  <!-- 変更ここから -->
+  <!-- ADMIN ロールを持つ人にのみ /signup へのリンクを表示-->
+  <a sec:authorize="hasRole('ADMIN')" href="/signup">ユーザー登録ページ</a>
+  <!-- 変更ここまで -->
+  <form method="post" th:action="@{/logout}">
+    <button type="submit">ログアウト</button>
+  </form>
+</body>
+</html>
+```
+
+Thymeleaf で認可情報を扱うために、 `thymeleaf-extras-springsecurity6` を利用し、
+`sec:authorize` で「ロールごとに表示非表示を切り替える」を実現しています。
+
+
 #### ログイン画面
 
-ログイン画面にサインアップ画面へのリンクを追加します。
+ログイン画面にも、 `ADMIN` ロールを持つユーザーにのみ見えるサインアップ画面へのリンクを追加します。
 
 `src/main/resources/templates/login.html`:
 
@@ -586,7 +628,8 @@ Spring Security が読み込めるハッシュ形式のパスワードを生成�
       <input type="submit" value="ログイン" />
     </form>
     <!-- 追加ここから -->
-    <a href="/signup">ユーザー登録ページ</a>
+    <!-- ADMIN ロールを持つ人にのみ /signup へのリンクを表示-->
+    <a sec:authorize="hasRole('ADMIN')" href="/signup">ユーザー登録ページ</a>
     <a href="/">インデックスページ</a>
     <!-- 追加ここまで -->
   </body>
@@ -627,6 +670,24 @@ Spring Security が読み込めるハッシュ形式のパスワードを生成�
 ### 動作確認
 
 ユーザー登録を行い、登録したユーザーでログインができることを確認しましょう。
+
+
+## まとめ
+
+Vol.2 では、次のことをやりました。
+
+- ログイン・ログアウトのカスタマイズ
+- DB からユーザー情報を取得するように修正
+- ユーザー登録
+- ロールを用いた URL レベルのアクセス制御（RBAC の触り）
+
+これにより、「実務でよく見る Spring Security 構成」のベースとなる形が完成しました。
+
+これ以降は次のような話題になりますが、
+本ワークショップで学んだ構成を土台にすれば、公式ドキュメントを読み進められる状態になっています。
+
+- メソッドレベルの認可
+- 権限（Authority）設計
 
 
 ## 参考資料

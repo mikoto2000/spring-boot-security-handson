@@ -29,9 +29,12 @@ public class SecurityConfig {
         .logoutSuccessUrl("/"))
     .authorizeHttpRequests(auth -> {
       auth
-        /* 修正ここから(/signup を追加) */
-        // "/", "/signup" は誰でも表示できる
-        .requestMatchers("/", "/signup").permitAll()
+        /* 修正ここから */
+        // "/" は誰でも表示できる
+        .requestMatchers("/").permitAll()
+        // "/signup", "/admin/**" は ADMIN しか表示できない
+        .requestMatchers("/signup").hasRole("ADMIN")
+        .requestMatchers("/admin/**").hasRole("ADMIN")
         /* 修正ここまで */
         // その他ページは、ログイン済みでないと表示できない
         .anyRequest().authenticated();

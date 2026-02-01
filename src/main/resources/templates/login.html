@@ -19,9 +19,9 @@
       <input type="submit" value="ログイン" />
     </form>
     <!-- 追加ここから -->
-    <a href="/signup">ユーザー登録ページ</a>
+    <!-- ADMIN ロールを持つ人にのみ /signup へのリンクを表示-->
+    <a sec:authorize="hasRole('ADMIN')" href="/signup">ユーザー登録ページ</a>
     <a href="/">インデックスページ</a>
     <!-- 追加ここまで -->
   </body>
 </html>
-
