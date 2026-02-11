@@ -1,4 +1,4 @@
-# Spring Boot Security ワークショップ
+# Spring Boot Security ハンズオン
 
 - [Vol1](./Vol1.md)
   - プロジェクトの作成
